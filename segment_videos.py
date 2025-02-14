@@ -215,7 +215,7 @@ def process_videos_updated(video_dir, csv_dir, num_frames=10, target_size=(256,2
         
         # If no ratings are available in both task and segment files, record the filename.
         if (not rec["task_ratings"]) and (not rec["segment_ratings"]):
-            video_path = os.path.join(video_dir, patient_id, file_name)
+            video_path = os.path.join(video_dir, 'ARAT_0'+str(patient_id), file_name)
             no_rating_files.append(video_path)
         
         # Construct the full path to the video file.
