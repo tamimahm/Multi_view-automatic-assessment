@@ -67,45 +67,54 @@ def load_rating_info(csv_dir):
     
     Expected files in csv_dir:
       - task_final.csv with columns: PatientTaskHandMappingId, Completed, Initialized, Time, Impaired, Rating, TherapistId, CreatedAt, ModifiedAt, Finger
-      - segment_final.csv with columns: PatientTaskHandMappingId, Completed, Initialized, Time, Impaired, Rating, TherapistId, CreatedAt, ModifiedAt, Finger
+      - segment_final.csv with columns: PatientTaskHandMappingId, SegmentId, Completed, Initialized, Time, Impaired, Rating, TherapistId, CreatedAt, ModifiedAt, Finger
       
     Returns:
       Two dictionaries:
-         task_ratings: mapping PatientTaskHandMappingId to a dictionary containing keys 't1' and 't2' if both ratings are available,
-                       or just 't1' if only one rating is available.
-         segment_ratings: mapping PatientTaskHandMappingId to a dictionary similarly for segment ratings.
-    """
-    import os
-    import pandas as pd
-
+         task_ratings: mapping PatientTaskHandMappingId to a dictionary with keys 't1' and (optionally) 't2'
+                       for task ratings.
+         segment_ratings: mapping PatientTaskHandMappingId to a dictionary with keys 't1' and (optionally) 't2',
+                          where each value is itself a dictionary mapping SegmentId to its rating.
+    """   
     task_file = os.path.join(csv_dir, "task_final.csv")
     segment_file = os.path.join(csv_dir, "segment_final.csv")
     
     task_df = pd.read_csv(task_file)
     segment_df = pd.read_csv(segment_file)
     
+    # Process task ratings: store first rating as 't1' and second (if available) as 't2'.
     task_ratings = {}
     for _, row in task_df.iterrows():
         mapping_id = row['PatientTaskHandMappingId']
         rating = row['Rating']
-        # Only store if rating is not NaN
         if pd.notna(rating):
             if mapping_id not in task_ratings:
                 task_ratings[mapping_id] = {'t1': rating}
-            elif 't1' in task_ratings[mapping_id] and 't2' not in task_ratings[mapping_id]:
+            elif 't2' not in task_ratings[mapping_id]:
                 task_ratings[mapping_id]['t2'] = rating
-            # If already both t1 and t2 exist, ignore extra ratings.
+            # Ignore any additional ratings.
     
+    # Process segment ratings:
+    # For each mapping id and therapist, build a dictionary mapping each SegmentId to its rating.
     segment_ratings = {}
-    for _, row in segment_df.iterrows():
-        mapping_id = row['PatientTaskHandMappingId']
-        rating = row['Rating']
-        if pd.notna(rating):
-            if mapping_id not in segment_ratings:
-                segment_ratings[mapping_id] = {'t1': rating}
-            elif 't1' in segment_ratings[mapping_id] and 't2' not in segment_ratings[mapping_id]:
-                segment_ratings[mapping_id]['t2'] = rating
-            # Ignore any additional ratings beyond the first two.
+    grouped = segment_df.groupby(['PatientTaskHandMappingId', 'TherapistId'])
+    for (mapping_id, therapist_id), group in grouped:
+        seg_rating_dict = {}
+        for _, row in group.iterrows():
+            # Assuming segment_final.csv has a 'SegmentId' column.
+            seg_id = row['SegmentId']
+            rating = row['Rating']
+            if pd.notna(rating):
+                seg_rating_dict[seg_id] = rating
+        if not seg_rating_dict:
+            continue
+        # For each mapping_id, store the first therapist's segment ratings as 't1'
+        # and if a second therapist is available, store their ratings as 't2'.
+        if mapping_id not in segment_ratings:
+            segment_ratings[mapping_id] = {'t1': seg_rating_dict}
+        elif 't1' in segment_ratings[mapping_id] and 't2' not in segment_ratings[mapping_id]:
+            segment_ratings[mapping_id]['t2'] = seg_rating_dict
+        # If already both t1 and t2 exist, ignore extra groups.
     
     return task_ratings, segment_ratings
 
