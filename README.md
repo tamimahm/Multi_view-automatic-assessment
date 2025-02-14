@@ -1,0 +1,2 @@
+# Multi_view automatic assessment
+ This repository contains the functions to read the video files and suing clinician annotated segmentaiton time stamps first creates segments of videos. Then it passes through the automatic assessment pipeline first using a pretrained network extracts features from three views and then concatenates the features. Then using hierarchical modeling and VLms it predicts segment scores and task scores.
