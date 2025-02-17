@@ -2,6 +2,7 @@ import os
 import cv2
 import pandas as pd
 import numpy as np
+import pickle
 
 def load_video_segments_info(csv_dir):
     """
@@ -255,7 +256,20 @@ if __name__ == "__main__":
     
     # Process videos based on the updated CSVs, segmentation info, and ratings.
     datasets, save_seg_video, no_rating_files = process_videos_updated(video_dir, csv_dir)
-    
+
+
+    # Assuming datasets is a dictionary or list that needs to be saved as a .pkl file
+    with open("D:/Chicago_study/files/datasets.pkl", "wb") as f:
+        pickle.dump(datasets, f)
+
+    # Saving save_seg_video as CSV
+    save_seg_video_df = pd.DataFrame(save_seg_video)
+    save_seg_video_df.to_csv("D:/Chicago_study/files/save_seg_video.csv", index=False)
+
+    # Saving no_rating_files as CSV
+    no_rating_files_df = pd.DataFrame(no_rating_files)
+    no_rating_files_df.to_csv("D:/Chicago_study/files/no_rating_files.csv", index=False)
+
     # Report number of processed samples per camera view
     for cam, samples in datasets.items():
         print(f"Camera {cam}: {len(samples)} samples processed.")
