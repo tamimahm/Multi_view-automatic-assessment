@@ -251,8 +251,8 @@ def process_videos_updated(video_dir, csv_dir, num_frames=10, target_size=(256,2
 
 if __name__ == "__main__":
     # Directories (adjust as necessary)
-    video_dir = r"D:\Chicago_study\all_ARAT_videos"
-    csv_dir = r"D:\Chicago_study\files"
+    video_dir = r"D:\all_ARAT_videos"
+    csv_dir = r"D:\files_database"
     
     # Process videos based on the updated CSVs, segmentation info, and ratings.
     datasets, save_seg_video, no_rating_files = process_videos_updated(video_dir, csv_dir)
