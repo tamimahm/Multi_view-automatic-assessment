@@ -144,6 +144,11 @@ def extract_frames_from_segment(video_path, start_time, end_time, num_frames=10,
     # Here start_time and end_time are assumed to be in frame numbers
     start_frame = int(start_time)
     end_frame = int(end_time)
+    # Get the total number of frames in the video
+    total_video_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    # If end_frame exceeds total frames, adjust it
+    if end_frame > total_video_frames:
+        end_frame = total_video_frames    
     total_frames = end_frame - start_frame
     if total_frames <= 0:
         print(f"Invalid segment times for video: {video_path} (start: {start_time}, end: {end_time})")
@@ -221,10 +226,36 @@ def process_videos_updated(video_dir, csv_dir, num_frames=10, target_size=(256,2
         
         # Construct the full path to the video file.
         # Here we assume patient folders are named like 'ARAT_0XX' where XX is the patient id.
+        # Construct the initial video path using the given file_name
         video_path = os.path.join(video_dir, 'ARAT_0' + str(patient_id), file_name)
+
+        # Check if the file exists at that path
         if not os.path.exists(video_path):
-            print(f"Video file {video_path} does not exist. Skipping.")
-            continue
+            # If the file doesn't exist, check if the file name ends with ".mp4"
+            if file_name.endswith(".mp4"):
+                # If it doesn't already have a space before ".mp4", create a variant with a space
+                if not file_name.endswith(" .mp4"):
+                    file_name_with_space = file_name[:-4] + " .mp4"
+                    video_path_with_space = os.path.join(video_dir, 'ARAT_0' + str(patient_id), file_name_with_space)
+                    
+                    # If the variant with a space exists, use that path
+                    if os.path.exists(video_path_with_space):
+                        video_path = video_path_with_space
+                    else:
+                        print(f"Video file {video_path} (and variant {video_path_with_space}) does not exist. Skipping.")
+                        continue
+                else:
+                    # The file name already ends with " .mp4", so no alternative exists
+                    print(f"Video file {video_path} does not exist. Skipping.")
+                    continue
+            else:
+                # If the file name does not end with ".mp4", there's no special case to try
+                print(f"Video file {video_path} does not exist. Skipping.")
+                continue
+
+        # At this point, video_path exists (either the original or the space-added variant)
+        # Proceed with processing video_path...
+
         
         # Process each segment in the video
         for seg in segments:
