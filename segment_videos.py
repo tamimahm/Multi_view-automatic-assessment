@@ -3,7 +3,7 @@ import cv2
 import pandas as pd
 import numpy as np
 import pickle
-
+import matplotlib.pyplot as plt
 def load_video_segments_info(csv_dir):
     """
     Loads and merges the updated CSV files.
@@ -195,6 +195,105 @@ def process_videos_updated(video_dir, csv_dir, num_frames=10, target_size=(256,2
       save_seg_video: A list of video filenames (with full paths) that encountered errors during segment frame extraction.
       no_rating_files: A list of video filenames (with full paths) for which no ratings were found.
     """
+    segment_descriptions = {
+        1: {
+            1: "Extend arm toward the large wooden block on the table.",
+            2: "Open hand and grasp the large wooden block securely.",
+            3: "Lift and move the block toward the target shelf.",
+            4: "Place the block on the shelf and release it."
+        },
+        2: {
+            1: "Reach out toward the medium wooden block on the table.",
+            2: "Grip the medium wooden block firmly between fingers.",
+            3: "Lift and carry the block to the designated shelf.",
+            4: "Place the block onto the shelf and let go."
+        },
+        3: {
+            1: "Extend arm to reach the small wooden block on the table.",
+            2: "Carefully grasp the small wooden block with thumb and fingers.",
+            3: "Lift and move the block toward the target shelf.",
+            4: "Place the block on the shelf and release it."
+        },
+        4: {
+            1: "Lean in and reach toward the tiny wooden block on the table.",
+            2: "Delicately pinch the tiny block between fingers and thumb.",
+            3: "Lift and transfer the block to the target area on the shelf.",
+            4: "Carefully place the block on the shelf and release it."
+        },
+        5: {
+            1: "Reach out toward the cricket ball sitting on the table.",
+            2: "Open hand wide to cup the cricket ball securely.",
+            3: "Lift and move the ball upward toward the target shelf.",
+            4: "Release the ball onto the shelf, letting it settle gently."
+        },
+        6: {
+            1: "Reach forward toward the flat sharpening stone on the table.",
+            2: "Clamp the sharpening stone between thumb and index finger.",
+            3: "Lift and carry the stone toward the target shelf.",
+            4: "Place the stone on the shelf and release it."
+        },
+        7: {
+            1: "Reach out to grasp the cup filled with water on the table.",
+            2: "Wrap the hand around the cup to secure a firm hold.",
+            3: "Lift and tilt the cup to pour water into the target cup.",
+            4: "Return the cup to the table and release it."
+        },
+        8: {
+            1: "Extend arm toward the large metal tube on the table.",
+            2: "Grip the cylindrical tube by curling fingers around it.",
+            3: "Lift and move the tube to the designated target peg.",
+            4: "Place the tube on the peg and release it."
+        },
+        9: {
+            1: "Reach toward the small metal tube resting on its peg.",
+            2: "Grasp the narrow tube with fingertips to lift it.",
+            3: "Move the tube steadily to the target peg.",
+            4: "Slide the tube onto the peg and release it."
+        },
+        10: {
+            1: "Reach for the small metal washer on the table.",
+            2: "Pinch the thin washer between thumb and index finger.",
+            3: "Carry the washer to align it above the target bolt.",
+            4: "Place the washer on the bolt and let it go."
+        },
+        11: {
+            1: "Reach for a tiny metal ball bearing in a small container.",
+            2: "Delicately pinch the ball bearing with thumb and fingertip.",
+            3: "Lift and move the ball bearing toward the target container.",
+            4: "Drop the ball bearing into the container and release it."
+        },
+        12: {
+            1: "Reach toward a small marble resting in a container.",
+            2: "Pinch the marble between thumb and index finger to lift it.",
+            3: "Lift and carry the marble to the target cup on the shelf.",
+            4: "Release the marble into the cup by letting it fall."
+        },
+        13: {
+            1: "Extend arm to reach a tiny metal ball bearing on the table.",
+            2: "Gently pinch the ball bearing with thumb and finger.",
+            3: "Lift and move the ball bearing toward the shelf container.",
+            4: "Drop the ball bearing into the container and release it."
+        },
+        14: {
+            1: "Reach out toward the small marble on the table.",
+            2: "Pinch the marble between fingertips to pick it up.",
+            3: "Lift and move the marble to the target container on the shelf.",
+            4: "Release the marble into the container and let it settle."
+        },
+        15: {
+            1: "Reach toward the tiny metal ball bearing on the table.",
+            2: "Carefully pinch the ball bearing with fingertips.",
+            3: "Lift and move the ball bearing slowly to the target cup.",
+            4: "Let the ball bearing drop into the cup and release it."
+        },
+        16: {
+            1: "Initiate a reach for the small marble on the table.",
+            2: "Grasp the marble between thumb and index finger with a firm pinch.",
+            3: "Lift the marble and move it toward the designated drop-off point on the shelf.",
+            4: "Open the fingers to release the marble into the target container."
+        }
+    }
+
     records = load_video_segments_info(csv_dir)
     task_ratings_dict, segment_ratings_dict = load_rating_info(csv_dir)
     
@@ -207,7 +306,7 @@ def process_videos_updated(video_dir, csv_dir, num_frames=10, target_size=(256,2
     for rec in records:
         camera_id = 'cam' + str(rec["CameraId"])
         # Skip if camera_id is not in our valid set (e.g., ignore cam2)
-        if camera_id not in valid_cameras:
+        if camera_id not in valid_cameras or 'Unimpaired' in file_name:
             continue
         
         mapping_id = rec["PatientTaskHandmappingId"]
@@ -256,9 +355,9 @@ def process_videos_updated(video_dir, csv_dir, num_frames=10, target_size=(256,2
         # At this point, video_path exists (either the original or the space-added variant)
         # Proceed with processing video_path...
 
-        
+        segments_sample=[]
         # Process each segment in the video
-        for seg in segments:
+        for seg_index, seg in enumerate(segments):
             start_time, end_time = seg
             # If the segment is incomplete (start and end are the same), skip extraction without error logging.
             if start_time == end_time:
@@ -267,16 +366,24 @@ def process_videos_updated(video_dir, csv_dir, num_frames=10, target_size=(256,2
             if not frames:
                 save_seg_video.append(video_path)
                 continue
+            # Retrieve description based on activity_id and seg_index
+            segment_desc = segment_descriptions.get(activity_id, {}).get(seg_index+1, "No description available")
+            # Extract the current segment ratings from rec["segment_ratings"] using seg_index
+            current_segment_ratings = { key: ratings.get(seg_index+1, None)
+                                            for key, ratings in rec["segment_ratings"].items() }
             sample = {
                 "patient_id": patient_id,
                 "activity_id": activity_id,
                 "CameraId": camera_id,
                 "segment": seg,
+                "segment_id": seg_index,
+                "segment_description": segment_desc,
                 "frames": frames,
                 "task_ratings": rec["task_ratings"],
-                "segment_ratings": rec["segment_ratings"]
+                "segment_ratings": current_segment_ratings
             }
-            datasets[camera_id].append(sample)
+            segments_sample.append(sample)
+        datasets[camera_id].append(segments_sample)
     
     return datasets, save_seg_video, no_rating_files
 
@@ -286,7 +393,7 @@ if __name__ == "__main__":
     csv_dir = r"D:\files_database"
     
     # Process videos based on the updated CSVs, segmentation info, and ratings.
-    datasets, save_seg_video, no_rating_files = process_videos_updated(video_dir, csv_dir)
+    datasets, save_seg_video, no_rating_files = process_videos_updated(video_dir, csv_dir,num_frames=20, target_size=(256,256))
 
 
     # Assuming datasets is a dictionary or list that needs to be saved as a .pkl file
