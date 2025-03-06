@@ -305,9 +305,7 @@ def process_videos_updated(video_dir, csv_dir, num_frames=10, target_size=(256,2
     
     for rec in records:
         camera_id = 'cam' + str(rec["CameraId"])
-        # Skip if camera_id is not in our valid set (e.g., ignore cam2)
-        if camera_id not in valid_cameras or 'Unimpaired' in file_name:
-            continue
+
         
         mapping_id = rec["PatientTaskHandmappingId"]
         patient_id = rec["patient_id"]
@@ -317,11 +315,17 @@ def process_videos_updated(video_dir, csv_dir, num_frames=10, target_size=(256,2
         # Attach ratings (list may have 1 or 2 ratings)
         rec["task_ratings"] = task_ratings_dict.get(mapping_id, [])
         rec["segment_ratings"] = segment_ratings_dict.get(mapping_id, [])
-        
+        # Skip if camera_id is not in our valid set (e.g., ignore cam2)
+        if camera_id not in valid_cameras or 'Unimpaired' in file_name:
+            continue        
         # If no ratings are available in both task and segment files, record the filename.
-        if (not rec["task_ratings"]) and (not rec["segment_ratings"]):
-            video_path = os.path.join(video_dir, 'ARAT_0'+str(patient_id), file_name)
+        if (not rec["task_ratings"]) and (not rec["segment_ratings"]) or (rec["task_ratings"]['t1']==0 and rec["task_ratings"]['t2']==0):
+            if patient_id<100:
+                video_path = os.path.join(video_dir, 'ARAT_0'+str(patient_id), file_name)
+            else:  
+                video_path = os.path.join(video_dir, 'ARAT_'+str(patient_id), file_name)  
             no_rating_files.append(video_path)
+            continue
         
         # Construct the full path to the video file.
         # Here we assume patient folders are named like 'ARAT_0XX' where XX is the patient id.
@@ -397,16 +401,16 @@ if __name__ == "__main__":
 
 
     # Assuming datasets is a dictionary or list that needs to be saved as a .pkl file
-    with open("D:/Chicago_study/files/datasets.pkl", "wb") as f:
+    with open("D:/files_database/datasets.pkl", "wb") as f:
         pickle.dump(datasets, f)
 
     # Saving save_seg_video as CSV
     save_seg_video_df = pd.DataFrame(save_seg_video)
-    save_seg_video_df.to_csv("D:/Chicago_study/files/save_seg_video.csv", index=False)
+    save_seg_video_df.to_csv("D:/files_database/save_seg_video.csv", index=False)
 
     # Saving no_rating_files as CSV
     no_rating_files_df = pd.DataFrame(no_rating_files)
-    no_rating_files_df.to_csv("D:/Chicago_study/files/no_rating_files.csv", index=False)
+    no_rating_files_df.to_csv("D:/files_database/no_rating_files.csv", index=False)
 
     # Report number of processed samples per camera view
     for cam, samples in datasets.items():
