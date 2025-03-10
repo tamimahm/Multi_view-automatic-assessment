@@ -170,7 +170,7 @@ def extract_frames_from_segment(video_path, start_time, end_time, num_frames=10,
     cap.release()
     return frames
 
-def process_videos_updated(video_dir, csv_dir, num_frames=10, target_size=(256,256)):
+def process_videos_updated(video_dir, csv_dir, vid, num_frames=10, target_size=(256,256)):
     """
     Processes video files using the updated CSV information:
       - Merges CSV files based on PatientTaskHandmappingId.
@@ -302,126 +302,138 @@ def process_videos_updated(video_dir, csv_dir, num_frames=10, target_size=(256,2
     datasets = {cam: [] for cam in valid_cameras}
     save_seg_video = []
     no_rating_files = []
-    
+    zero_rating_vid=[]
     for rec in records:
         camera_id = 'cam' + str(rec["CameraId"])
 
         
         mapping_id = rec["PatientTaskHandmappingId"]
         patient_id = rec["patient_id"]
-        activity_id = rec["activity_id"]
-        file_name = rec["FileName"]
-        segments = rec["segments"]
-        # Attach ratings (list may have 1 or 2 ratings)
-        rec["task_ratings"] = task_ratings_dict.get(mapping_id, [])
-        rec["segment_ratings"] = segment_ratings_dict.get(mapping_id, [])
-        # Skip if camera_id is not in our valid set (e.g., ignore cam2)
-        if camera_id not in valid_cameras or 'Unimpaired' in file_name:
-            continue        
-        # If no ratings are available in both task and segment files, record the filename.
-        if (not rec["task_ratings"]) and (not rec["segment_ratings"]) or (rec["task_ratings"]['t1']==0 and rec["task_ratings"]['t2']==0):
+        if patient_id< (vid+1)*10 and patient_id>= (vid)*10:
+            activity_id = rec["activity_id"]
+            file_name = rec["FileName"]
+            segments = rec["segments"]
+            # Attach ratings (list may have 1 or 2 ratings)
+            rec["task_ratings"] = task_ratings_dict.get(mapping_id, [])
+            rec["segment_ratings"] = segment_ratings_dict.get(mapping_id, [])
+            # Skip if camera_id is not in our valid set (e.g., ignore cam2)
+            if camera_id not in valid_cameras or 'Unimpaired' in file_name:
+                continue   
+            if (rec["task_ratings"]['t1']==0 and rec["task_ratings"].get('t2', 0)==0):
+                if patient_id<100:
+                    video_path = os.path.join(video_dir, 'ARAT_0'+str(patient_id), file_name)
+                else:  
+                    video_path = os.path.join(video_dir, 'ARAT_'+str(patient_id), file_name)  
+                zero_rating_vid.append(video_path)
+            # If no ratings are available in both task and segment files, record the filename.
+            if (not rec["task_ratings"]) and (not rec["segment_ratings"]) :
+                if patient_id<100:
+                    video_path = os.path.join(video_dir, 'ARAT_0'+str(patient_id), file_name)
+                else:  
+                    video_path = os.path.join(video_dir, 'ARAT_'+str(patient_id), file_name)  
+                no_rating_files.append(video_path)
+                continue
+            
+            # Construct the full path to the video file.
+            # Here we assume patient folders are named like 'ARAT_0XX' where XX is the patient id.
+            # Construct the initial video path using the given file_name
             if patient_id<100:
                 video_path = os.path.join(video_dir, 'ARAT_0'+str(patient_id), file_name)
             else:  
                 video_path = os.path.join(video_dir, 'ARAT_'+str(patient_id), file_name)  
-            no_rating_files.append(video_path)
-            continue
-        
-        # Construct the full path to the video file.
-        # Here we assume patient folders are named like 'ARAT_0XX' where XX is the patient id.
-        # Construct the initial video path using the given file_name
-        video_path = os.path.join(video_dir, 'ARAT_0' + str(patient_id), file_name)
 
-        # Check if the file exists at that path
-        if not os.path.exists(video_path):
-            # If the file doesn't exist, check if the file name ends with ".mp4"
-            if file_name.endswith(".mp4"):
-                # If it doesn't already have a space before ".mp4", create a variant with a space
-                if not file_name.endswith(" .mp4"):
-                    file_name_with_space = file_name[:-4] + " .mp4"
-                    video_path_with_space = os.path.join(video_dir, 'ARAT_0' + str(patient_id), file_name_with_space)
-                    
-                    # If the variant with a space exists, use that path
-                    if os.path.exists(video_path_with_space):
-                        video_path = video_path_with_space
+            # Check if the file exists at that path
+            if not os.path.exists(video_path):
+                # If the file doesn't exist, check if the file name ends with ".mp4"
+                if file_name.endswith(".mp4"):
+                    # If it doesn't already have a space before ".mp4", create a variant with a space
+                    if not file_name.endswith(" .mp4"):
+                        file_name_with_space = file_name[:-4] + " .mp4"
+                        if patient_id<100:
+                            video_path_with_space = os.path.join(video_dir, 'ARAT_0' + str(patient_id), file_name_with_space)
+                        else:
+                            video_path_with_space = os.path.join(video_dir, 'ARAT_' + str(patient_id), file_name_with_space)                    
+                        # If the variant with a space exists, use that path
+                        if os.path.exists(video_path_with_space):
+                            video_path = video_path_with_space
+                        else:
+                            print(f"Video file {video_path} (and variant {video_path_with_space}) does not exist. Skipping.")
+                            continue
                     else:
-                        print(f"Video file {video_path} (and variant {video_path_with_space}) does not exist. Skipping.")
+                        # The file name already ends with " .mp4", so no alternative exists
+                        print(f"Video file {video_path} does not exist. Skipping.")
                         continue
                 else:
-                    # The file name already ends with " .mp4", so no alternative exists
+                    # If the file name does not end with ".mp4", there's no special case to try
                     print(f"Video file {video_path} does not exist. Skipping.")
                     continue
-            else:
-                # If the file name does not end with ".mp4", there's no special case to try
-                print(f"Video file {video_path} does not exist. Skipping.")
-                continue
 
-        # At this point, video_path exists (either the original or the space-added variant)
-        # Proceed with processing video_path...
+            # At this point, video_path exists (either the original or the space-added variant)
+            # Proceed with processing video_path...
 
-        segments_sample=[]
-        # Process each segment in the video
-        for seg_index, seg in enumerate(segments):
-            start_time, end_time = seg
-            # If the segment is incomplete (start and end are the same), skip extraction without error logging.
-            if start_time == end_time:
-                continue
-            frames = extract_frames_from_segment(video_path, start_time, end_time, num_frames, target_size)
-            if not frames:
-                save_seg_video.append(video_path)
-                continue
-            # Retrieve description based on activity_id and seg_index
-            segment_desc = segment_descriptions.get(activity_id, {}).get(seg_index+1, "No description available")
-            # Extract the current segment ratings from rec["segment_ratings"] using seg_index
-            current_segment_ratings = { key: ratings.get(seg_index+1, None)
-                                            for key, ratings in rec["segment_ratings"].items() }
-            sample = {
-                "patient_id": patient_id,
-                "activity_id": activity_id,
-                "CameraId": camera_id,
-                "segment": seg,
-                "segment_id": seg_index,
-                "segment_description": segment_desc,
-                "frames": frames,
-                "task_ratings": rec["task_ratings"],
-                "segment_ratings": current_segment_ratings
-            }
-            segments_sample.append(sample)
-        datasets[camera_id].append(segments_sample)
+            segments_sample=[]
+            # Process each segment in the video
+            for seg_index, seg in enumerate(segments):
+                start_time, end_time = seg
+                # If the segment is incomplete (start and end are the same), skip extraction without error logging.
+                if start_time == end_time:
+                    continue
+                frames = extract_frames_from_segment(video_path, start_time, end_time, num_frames, target_size)
+                if not frames:
+                    save_seg_video.append(video_path)
+                    continue
+                # Retrieve description based on activity_id and seg_index
+                segment_desc = segment_descriptions.get(activity_id, {}).get(seg_index+1, "No description available")
+                # Extract the current segment ratings from rec["segment_ratings"] using seg_index
+                current_segment_ratings = { key: ratings.get(seg_index+1, None)
+                                                for key, ratings in rec["segment_ratings"].items() }
+                sample = {
+                    "patient_id": patient_id,
+                    "activity_id": activity_id,
+                    "CameraId": camera_id,
+                    "segment": seg,
+                    "segment_id": seg_index,
+                    "segment_description": segment_desc,
+                    "frames": frames,
+                    "task_ratings": rec["task_ratings"],
+                    "segment_ratings": current_segment_ratings
+                }
+                segments_sample.append(sample)
+            datasets[camera_id].append(segments_sample)
     
-    return datasets, save_seg_video, no_rating_files
+    return datasets, save_seg_video, no_rating_files,zero_rating_vid
 
 if __name__ == "__main__":
     # Directories (adjust as necessary)
     video_dir = r"D:\all_ARAT_videos"
     csv_dir = r"D:\files_database"
-    
-    # Process videos based on the updated CSVs, segmentation info, and ratings.
-    datasets, save_seg_video, no_rating_files = process_videos_updated(video_dir, csv_dir,num_frames=20, target_size=(256,256))
+    for vid in range (11): 
+        print(vid)   
+        # Process videos based on the updated CSVs, segmentation info, and ratings.
+        datasets, save_seg_video, no_rating_files,zero_rating_vid = process_videos_updated(video_dir, csv_dir,vid,num_frames=20, target_size=(256,256))
+        # Assuming datasets is a dictionary or list that needs to be saved as a .pkl file
+        with open("D:/files_database/datasets_"+str(vid)+".pkl", "wb") as f:
+            pickle.dump(datasets, f)
+        # Saving save_seg_video as CSV
+        save_seg_video_df = pd.DataFrame(save_seg_video)
+        save_seg_video_df.to_csv("D:/files_database/save_seg_video_"+str(vid)+".csv", index=False)
 
-
-    # Assuming datasets is a dictionary or list that needs to be saved as a .pkl file
-    with open("D:/files_database/datasets.pkl", "wb") as f:
-        pickle.dump(datasets, f)
-
-    # Saving save_seg_video as CSV
-    save_seg_video_df = pd.DataFrame(save_seg_video)
-    save_seg_video_df.to_csv("D:/files_database/save_seg_video.csv", index=False)
-
-    # Saving no_rating_files as CSV
-    no_rating_files_df = pd.DataFrame(no_rating_files)
-    no_rating_files_df.to_csv("D:/files_database/no_rating_files.csv", index=False)
-
-    # Report number of processed samples per camera view
-    for cam, samples in datasets.items():
-        print(f"Camera {cam}: {len(samples)} samples processed.")
-    
-    if save_seg_video:
-        print("\nVideos that encountered errors during segment extraction:")
-        for video in save_seg_video:
-            print(video)
-    
-    if no_rating_files:
-        print("\nVideos with no ratings available:")
-        for video in no_rating_files:
-            print(video)
+        # Saving no_rating_files as CSV
+        no_rating_files_df = pd.DataFrame(no_rating_files)
+        no_rating_files_df.to_csv("D:/files_database/no_rating_files_"+str(vid)+".csv", index=False)
+        # Saving no_rating_files as CSV
+        zero_rating_files_df = pd.DataFrame(zero_rating_vid)
+        zero_rating_files_df.to_csv("D:/files_database/zero_rating_files_"+str(vid)+".csv", index=False)
+        # # Report number of processed samples per camera view
+        # for cam, samples in datasets.items():
+        #     print(f"Camera {cam}: {len(samples)} samples processed.")
+        
+        # if save_seg_video:
+        #     print("\nVideos that encountered errors during segment extraction:")
+        #     for video in save_seg_video:
+        #         print(video)
+        
+        # if no_rating_files:
+        #     print("\nVideos with no ratings available:")
+        #     for video in no_rating_files:
+        #         print(video)
