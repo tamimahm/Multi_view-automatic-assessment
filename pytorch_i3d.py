@@ -220,7 +220,7 @@ class InceptionI3d(nn.Module):
         self.end_points = {}
         end_point = 'Conv3d_1a_7x7'
         self.end_points[end_point] = Unit3D(in_channels=in_channels, output_channels=64, kernel_shape=[7, 7, 7],
-                                            stride=(2, 2, 2), padding=(3,3,3),  name=name+end_point)
+                                            stride=(1, 2, 2), padding=(3,3,3),  name=name+end_point)
         if self._final_endpoint == end_point: return
         
         end_point = 'MaxPool3d_2a_3x3'
@@ -239,7 +239,7 @@ class InceptionI3d(nn.Module):
         if self._final_endpoint == end_point: return
 
         end_point = 'MaxPool3d_3a_3x3'
-        self.end_points[end_point] = MaxPool3dSamePadding(kernel_size=[1, 3, 3], stride=(1, 2, 2),
+        self.end_points[end_point] = MaxPool3dSamePadding(kernel_size=[3, 3, 3], stride=(1, 2, 2),
                                                              padding=0)
         if self._final_endpoint == end_point: return
         
@@ -252,7 +252,7 @@ class InceptionI3d(nn.Module):
         if self._final_endpoint == end_point: return
 
         end_point = 'MaxPool3d_4a_3x3'
-        self.end_points[end_point] = MaxPool3dSamePadding(kernel_size=[3, 3, 3], stride=(2, 2, 2),
+        self.end_points[end_point] = MaxPool3dSamePadding(kernel_size=[3, 3, 3], stride=(1, 2, 2),
                                                              padding=0)
         if self._final_endpoint == end_point: return
 
@@ -277,7 +277,7 @@ class InceptionI3d(nn.Module):
         if self._final_endpoint == end_point: return
 
         end_point = 'MaxPool3d_5a_2x2'
-        self.end_points[end_point] = MaxPool3dSamePadding(kernel_size=[2, 2, 2], stride=(2, 2, 2),
+        self.end_points[end_point] = MaxPool3dSamePadding(kernel_size=[1, 2, 2], stride=(1, 2, 2),
                                                              padding=0)
         if self._final_endpoint == end_point: return
 
