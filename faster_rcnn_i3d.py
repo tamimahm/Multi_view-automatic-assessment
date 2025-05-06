@@ -1,4 +1,3 @@
-# precompute_bboxes.py
 import os
 import pickle
 import glob
@@ -6,7 +5,11 @@ import torch
 import numpy as np
 from PIL import Image
 import cv2
+import pandas as pd
 import torchvision.models.detection as detection
+
+# Path to the CSV file with camera assignments
+ipsi_contra_csv = "D:\\Github\\Multi_view-automatic-assessment\\camera_assignments.csv"
 
 def detect_person_bbox(frame, faster_rcnn, device='cuda'):
     if isinstance(frame, np.ndarray):
@@ -36,6 +39,11 @@ def detect_person_bbox(frame, faster_rcnn, device='cuda'):
 def precompute_bboxes(pickle_dir, output_dir):
     os.makedirs(output_dir, exist_ok=True)
 
+    # Read the CSV file
+    camera_df = pd.read_csv(ipsi_contra_csv)
+    # Create a dictionary mapping patient_id to ipsilateral_camera_id
+    patient_to_ipsilateral = dict(zip(camera_df['patient_id'], camera_df['ipsilateral_camera_id']))
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     # Load pre-trained Faster R-CNN model
     faster_rcnn = detection.fasterrcnn_resnet50_fpn(pretrained=True)
@@ -47,12 +55,22 @@ def precompute_bboxes(pickle_dir, output_dir):
         with open(pkl_file, 'rb') as f:
             data = pickle.load(f)
             for camera_id in data:
+                # Skip cam3 as per requirement
                 if camera_id == 'cam3':
-                    for segments_group in data[camera_id]:
-                        for segment in segments_group:
+                    continue
+                
+                for segments_group in data[camera_id]:
+                    for segment in segments_group:
+                        # Extract patient_id and camera_id from segment
+                        patient_id = segment['patient_id']
+                        segment_camera_id = segment['CameraId']
+                        
+                        # Check if this camera is the ipsilateral camera for the patient
+                        ipsilateral_camera = patient_to_ipsilateral.get(patient_id)
+                        if ipsilateral_camera == segment_camera_id:
                             frames = segment['frames']
-                            video_id = (f"patient_{segment['patient_id']}_task_{segment['activity_id']}_"
-                                        f"{segment['CameraId']}_seg_{segment['segment_id']}")
+                            video_id = (f"patient_{patient_id}_task_{segment['activity_id']}_"
+                                        f"{segment_camera_id}_seg_{segment['segment_id']}")
                             bboxes = []
 
                             for frame in frames:
@@ -68,5 +86,5 @@ def precompute_bboxes(pickle_dir, output_dir):
 if __name__ == '__main__':
     precompute_bboxes(
         pickle_dir='D:/pickle_dir',
-        output_dir='D:/Github/Multi_view-automatic-assessment/bboxes'
+        output_dir='D:/frcnn_bboxes/bboxes_ipsi'
     )
