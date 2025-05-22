@@ -237,7 +237,7 @@ def process_object_locations():
                 'top': {},   # Will store activity_id -> object location arrays
                 'ipsi': {}   # Will store activity_id -> object location arrays
             }
-        
+
         # Determine which file to use (prioritize corrected)
         csv_file = data_sources['corrected'] if data_sources['corrected'] else data_sources['original']
         source_type = "corrected" if data_sources['corrected'] else "original"
