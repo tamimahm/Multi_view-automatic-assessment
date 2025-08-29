@@ -303,10 +303,16 @@ def process_videos_updated(video_dir, csv_dir, vid, num_frames=10, target_size=(
     save_seg_video = []
     no_rating_files = []
     zero_rating_vid=[]
+    invalid_camera_unim=0
+    no_rating=0
+    no_video=0
+    incomplete_segment=0
+    no_frame=0
+    no_segment_ratin=0
+    no_segment_file=[]
+    seg_task_0=[]
     for rec in records:
         camera_id = 'cam' + str(rec["CameraId"])
-
-        
         mapping_id = rec["PatientTaskHandmappingId"]
         patient_id = rec["patient_id"]
         if patient_id< (vid+1)*10 and patient_id>= (vid)*10:
@@ -318,13 +324,34 @@ def process_videos_updated(video_dir, csv_dir, vid, num_frames=10, target_size=(
             rec["segment_ratings"] = segment_ratings_dict.get(mapping_id, [])
             # Skip if camera_id is not in our valid set (e.g., ignore cam2)
             if camera_id not in valid_cameras or 'Unimpaired' in file_name:
+                invalid_camera_unim+=1
                 continue   
-            if (rec["task_ratings"]['t1']==0 and rec["task_ratings"].get('t2', 0)==0):
-                if patient_id<100:
-                    video_path = os.path.join(video_dir, 'ARAT_0'+str(patient_id), file_name)
-                else:  
-                    video_path = os.path.join(video_dir, 'ARAT_'+str(patient_id), file_name)  
-                zero_rating_vid.append(video_path)
+            if (rec["task_ratings"]['t1']==1 and rec["task_ratings"].get('t2', 0)==1):
+
+                seg = rec.get("segment_ratings", {})
+                
+                # check t1
+                all_t1_zero = True
+                for v in seg.get('t1', {}).values():
+                    if v != 0:
+                        all_t1_zero = False
+                        break
+
+                # check t2
+                all_t2_zero = True
+                for v in seg.get('t2', {}).values():
+                    if v != 0:
+                        all_t2_zero = False
+                        break
+
+                if all_t1_zero and all_t2_zero:
+                    seg_task_0.append(rec['FileName'])   
+
+                # if patient_id<100:
+                #     video_path = os.path.join(video_dir, 'ARAT_0'+str(patient_id), file_name)
+                # else:  
+                #     video_path = os.path.join(video_dir, 'ARAT_'+str(patient_id), file_name)  
+                # zero_rating_vid.append(video_path)
             # If no ratings are available in both task and segment files, record the filename.
             if (not rec["task_ratings"]) and (not rec["segment_ratings"]) :
                 if patient_id<100:
@@ -332,6 +359,7 @@ def process_videos_updated(video_dir, csv_dir, vid, num_frames=10, target_size=(
                 else:  
                     video_path = os.path.join(video_dir, 'ARAT_'+str(patient_id), file_name)  
                 no_rating_files.append(video_path)
+                no_rating+=1
                 continue
             
             # Construct the full path to the video file.
@@ -358,14 +386,17 @@ def process_videos_updated(video_dir, csv_dir, vid, num_frames=10, target_size=(
                             video_path = video_path_with_space
                         else:
                             print(f"Video file {video_path} (and variant {video_path_with_space}) does not exist. Skipping.")
+                            no_video+=1
                             continue
                     else:
                         # The file name already ends with " .mp4", so no alternative exists
                         print(f"Video file {video_path} does not exist. Skipping.")
+                        no_video+=1
                         continue
                 else:
                     # If the file name does not end with ".mp4", there's no special case to try
                     print(f"Video file {video_path} does not exist. Skipping.")
+                    no_video+=1
                     continue
 
             # At this point, video_path exists (either the original or the space-added variant)
@@ -377,29 +408,38 @@ def process_videos_updated(video_dir, csv_dir, vid, num_frames=10, target_size=(
                 start_time, end_time = seg
                 # If the segment is incomplete (start and end are the same), skip extraction without error logging.
                 if start_time == end_time:
+                    incomplete_segment+=1
                     continue
-                frames = extract_frames_from_segment(video_path, start_time, end_time, num_frames, target_size)
-                if not frames:
-                    save_seg_video.append(video_path)
-                    continue
+                # frames = extract_frames_from_segment(video_path, start_time, end_time, num_frames, target_size)
+                # if not frames:
+                #     save_seg_video.append(video_path)
+                #     no_frame+=1
+                #     continue
+                frames=0
                 # Retrieve description based on activity_id and seg_index
                 segment_desc = segment_descriptions.get(activity_id, {}).get(seg_index+1, "No description available")
                 # Extract the current segment ratings from rec["segment_ratings"] using seg_index
-                current_segment_ratings = { key: ratings.get(seg_index+1, None)
+                if bool(rec.get('segments')) and not bool(rec.get('segment_ratings')): 
+                    no_segment_ratin+=1
+                    no_segment_file.append(rec)
+                    continue
+
+                else:
+                    current_segment_ratings = { key: ratings.get(seg_index+1, None)
                                                 for key, ratings in rec["segment_ratings"].items() }
-                sample = {
-                    "patient_id": patient_id,
-                    "activity_id": activity_id,
-                    "CameraId": camera_id,
-                    "segment": seg,
-                    "segment_id": seg_index,
-                    "segment_description": segment_desc,
-                    "frames": frames,
-                    "task_ratings": rec["task_ratings"],
-                    "segment_ratings": current_segment_ratings
-                }
-                segments_sample.append(sample)
-            datasets[camera_id].append(segments_sample)
+            #     sample = {
+            #         "patient_id": patient_id,
+            #         "activity_id": activity_id,
+            #         "CameraId": camera_id,
+            #         "segment": seg,
+            #         "segment_id": seg_index,
+            #         "segment_description": segment_desc,
+            #         "frames": frames,
+            #         "task_ratings": rec["task_ratings"],
+            #         "segment_ratings": current_segment_ratings
+            #     }
+            #     segments_sample.append(sample)
+            # datasets[camera_id].append(segments_sample)
     
     return datasets, save_seg_video, no_rating_files,zero_rating_vid
 
@@ -411,19 +451,24 @@ if __name__ == "__main__":
         print(vid)   
         # Process videos based on the updated CSVs, segmentation info, and ratings.
         datasets, save_seg_video, no_rating_files,zero_rating_vid = process_videos_updated(video_dir, csv_dir,vid,num_frames=20, target_size=(256,256))
-        # Assuming datasets is a dictionary or list that needs to be saved as a .pkl file
-        with open("D:/files_database/datasets_"+str(vid)+".pkl", "wb") as f:
-            pickle.dump(datasets, f)
-        # Saving save_seg_video as CSV
-        save_seg_video_df = pd.DataFrame(save_seg_video)
-        save_seg_video_df.to_csv("D:/files_database/save_seg_video_"+str(vid)+".csv", index=False)
+        # # Assuming datasets is a dictionary or list that needs to be saved as a .pkl file
+        # with open("D:/files_database/datasets_"+str(vid)+".pkl", "wb") as f:
+        #     pickle.dump(datasets, f)
+        # # Saving save_seg_video as CSV
+        # save_seg_video_df = pd.DataFrame(save_seg_video)
+        # save_seg_video_df.to_csv("D:/files_database/save_seg_video_"+str(vid)+".csv", index=False)
 
-        # Saving no_rating_files as CSV
-        no_rating_files_df = pd.DataFrame(no_rating_files)
-        no_rating_files_df.to_csv("D:/files_database/no_rating_files_"+str(vid)+".csv", index=False)
-        # Saving no_rating_files as CSV
-        zero_rating_files_df = pd.DataFrame(zero_rating_vid)
-        zero_rating_files_df.to_csv("D:/files_database/zero_rating_files_"+str(vid)+".csv", index=False)
+        # # Saving no_rating_files as CSV
+        # no_rating_files_df = pd.DataFrame(no_rating_files)
+        # no_rating_files_df.to_csv("D:/files_database/no_rating_files_"+str(vid)+".csv", index=False)
+        # # Saving no_rating_files as CSV
+        # zero_rating_files_df = pd.DataFrame(zero_rating_vid)
+        # zero_rating_files_df.to_csv("D:/files_database/zero_rating_files_"+str(vid)+".csv", index=False)
+
+
+
+
+
         # # Report number of processed samples per camera view
         # for cam, samples in datasets.items():
         #     print(f"Camera {cam}: {len(samples)} samples processed.")
