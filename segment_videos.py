@@ -77,8 +77,8 @@ def load_rating_info(csv_dir):
          segment_ratings: mapping PatientTaskHandMappingId to a dictionary with keys 't1' and (optionally) 't2',
                           where each value is itself a dictionary mapping SegmentId to its rating.
     """   
-    task_file = os.path.join(csv_dir, "task_final.csv")
-    segment_file = os.path.join(csv_dir, "segment_final.csv")
+    task_file = os.path.join(csv_dir, "task_final_updated.csv")
+    segment_file = os.path.join(csv_dir, "segment_final_updated.csv")
     
     task_df = pd.read_csv(task_file)
     segment_df = pd.read_csv(segment_file)
