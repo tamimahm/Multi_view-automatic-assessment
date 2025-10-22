@@ -415,7 +415,6 @@ def process_videos_updated(video_dir, csv_dir, vid, num_frames=10, target_size=(
                     save_seg_video.append(video_path)
                     no_frame+=1
                     continue
-                frames=0
                 # Retrieve description based on activity_id and seg_index
                 segment_desc = segment_descriptions.get(activity_id, {}).get(seg_index+1, "No description available")
                 # Extract the current segment ratings from rec["segment_ratings"] using seg_index
