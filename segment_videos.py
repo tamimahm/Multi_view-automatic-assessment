@@ -347,11 +347,11 @@ def process_videos_updated(video_dir, csv_dir, vid, num_frames=10, target_size=(
                 if all_t1_zero and all_t2_zero:
                     seg_task_0.append(rec['FileName'])   
 
-                # if patient_id<100:
-                #     video_path = os.path.join(video_dir, 'ARAT_0'+str(patient_id), file_name)
-                # else:  
-                #     video_path = os.path.join(video_dir, 'ARAT_'+str(patient_id), file_name)  
-                # zero_rating_vid.append(video_path)
+                if patient_id<100:
+                    video_path = os.path.join(video_dir, 'ARAT_0'+str(patient_id), file_name)
+                else:  
+                    video_path = os.path.join(video_dir, 'ARAT_'+str(patient_id), file_name)  
+                zero_rating_vid.append(video_path)
             # If no ratings are available in both task and segment files, record the filename.
             if (not rec["task_ratings"]) and (not rec["segment_ratings"]) :
                 if patient_id<100:
@@ -410,11 +410,11 @@ def process_videos_updated(video_dir, csv_dir, vid, num_frames=10, target_size=(
                 if start_time == end_time:
                     incomplete_segment+=1
                     continue
-                # frames = extract_frames_from_segment(video_path, start_time, end_time, num_frames, target_size)
-                # if not frames:
-                #     save_seg_video.append(video_path)
-                #     no_frame+=1
-                #     continue
+                frames = extract_frames_from_segment(video_path, start_time, end_time, num_frames, target_size)
+                if not frames:
+                    save_seg_video.append(video_path)
+                    no_frame+=1
+                    continue
                 frames=0
                 # Retrieve description based on activity_id and seg_index
                 segment_desc = segment_descriptions.get(activity_id, {}).get(seg_index+1, "No description available")
@@ -427,19 +427,19 @@ def process_videos_updated(video_dir, csv_dir, vid, num_frames=10, target_size=(
                 else:
                     current_segment_ratings = { key: ratings.get(seg_index+1, None)
                                                 for key, ratings in rec["segment_ratings"].items() }
-            #     sample = {
-            #         "patient_id": patient_id,
-            #         "activity_id": activity_id,
-            #         "CameraId": camera_id,
-            #         "segment": seg,
-            #         "segment_id": seg_index,
-            #         "segment_description": segment_desc,
-            #         "frames": frames,
-            #         "task_ratings": rec["task_ratings"],
-            #         "segment_ratings": current_segment_ratings
-            #     }
-            #     segments_sample.append(sample)
-            # datasets[camera_id].append(segments_sample)
+                sample = {
+                    "patient_id": patient_id,
+                    "activity_id": activity_id,
+                    "CameraId": camera_id,
+                    "segment": seg,
+                    "segment_id": seg_index,
+                    "segment_description": segment_desc,
+                    "frames": frames,
+                    "task_ratings": rec["task_ratings"],
+                    "segment_ratings": current_segment_ratings
+                }
+                segments_sample.append(sample)
+            datasets[camera_id].append(segments_sample)
     
     return datasets, save_seg_video, no_rating_files,zero_rating_vid
 
@@ -452,8 +452,8 @@ if __name__ == "__main__":
         # Process videos based on the updated CSVs, segmentation info, and ratings.
         datasets, save_seg_video, no_rating_files,zero_rating_vid = process_videos_updated(video_dir, csv_dir,vid,num_frames=20, target_size=(256,256))
         # # Assuming datasets is a dictionary or list that needs to be saved as a .pkl file
-        # with open("D:/files_database/datasets_"+str(vid)+".pkl", "wb") as f:
-        #     pickle.dump(datasets, f)
+        with open("D:/files_database/datasets_"+str(vid)+".pkl", "wb") as f:
+            pickle.dump(datasets, f)
         # # Saving save_seg_video as CSV
         # save_seg_video_df = pd.DataFrame(save_seg_video)
         # save_seg_video_df.to_csv("D:/files_database/save_seg_video_"+str(vid)+".csv", index=False)
