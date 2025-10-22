@@ -446,13 +446,13 @@ def process_videos_updated(video_dir, csv_dir, vid, num_frames=10, target_size=(
 if __name__ == "__main__":
     # Directories (adjust as necessary)
     video_dir = r"D:\all_ARAT_videos"
-    csv_dir = r"D:\files_database"
+    csv_dir = r"D:\nature_everything"
     for vid in range (11): 
         print(vid)   
         # Process videos based on the updated CSVs, segmentation info, and ratings.
         datasets, save_seg_video, no_rating_files,zero_rating_vid = process_videos_updated(video_dir, csv_dir,vid,num_frames=20, target_size=(256,256))
         # # Assuming datasets is a dictionary or list that needs to be saved as a .pkl file
-        with open("D:/files_database/datasets_"+str(vid)+".pkl", "wb") as f:
+        with open("D:/nature_everything/nature_dataset/datasets_"+str(vid)+".pkl", "wb") as f:
             pickle.dump(datasets, f)
         # # Saving save_seg_video as CSV
         # save_seg_video_df = pd.DataFrame(save_seg_video)
