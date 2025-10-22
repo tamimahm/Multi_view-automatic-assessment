@@ -9,7 +9,7 @@ import pandas as pd
 import torchvision.models.detection as detection
 
 # Path to the CSV file with camera assignments
-ipsi_contra_csv = "D:\\Github\\Multi_view-automatic-assessment\\camera_assignments.csv"
+ipsi_contra_csv = "D:\\nature_everything\\camera_assignments.csv"
 
 def detect_person_bbox(frame, faster_rcnn, device='cuda'):
     if isinstance(frame, np.ndarray):
@@ -85,6 +85,6 @@ def precompute_bboxes(pickle_dir, output_dir):
 
 if __name__ == '__main__':
     precompute_bboxes(
-        pickle_dir='D:/pickle_dir',
-        output_dir='D:/frcnn_bboxes/bboxes_ipsi'
+        pickle_dir='D:/nature_everything/nature_dataset',
+        output_dir='D:/nature_everything/frcnn_boxes/ipsi'
     )
