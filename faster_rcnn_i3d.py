@@ -56,7 +56,7 @@ def precompute_bboxes(pickle_dir, output_dir):
             data = pickle.load(f)
             for camera_id in data:
                 # Skip cam3 as per requirement
-                if camera_id == 'cam3':
+                if camera_id != 'cam3':
                     continue
                 
                 for segments_group in data[camera_id]:
@@ -66,7 +66,8 @@ def precompute_bboxes(pickle_dir, output_dir):
                         segment_camera_id = segment['CameraId']
                         
                         # Check if this camera is the ipsilateral camera for the patient
-                        ipsilateral_camera = patient_to_ipsilateral.get(patient_id)
+                        #ipsilateral_camera = patient_to_ipsilateral.get(patient_id) #uncomment for ipsilateral
+                        ipsilateral_camera='cam3'
                         if ipsilateral_camera == segment_camera_id:
                             frames = segment['frames']
                             video_id = (f"patient_{patient_id}_task_{segment['activity_id']}_"
@@ -86,5 +87,5 @@ def precompute_bboxes(pickle_dir, output_dir):
 if __name__ == '__main__':
     precompute_bboxes(
         pickle_dir='D:/nature_everything/nature_dataset',
-        output_dir='D:/nature_everything/frcnn_boxes/ipsi'
+        output_dir='D:/nature_everything/frcnn_boxes/top'
     )
