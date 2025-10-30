@@ -69,7 +69,7 @@ def precompute_bboxes(pickle_dir, output_dir):
                     if ipsilateral_camera == tasks_camera_id:
                         frames = tasks['frames']
                         video_id = (f"patient_{patient_id}_task_{tasks['activity_id']}_"
-                                    f"{tasks_camera_id}_seg_{tasks['tasks_id']}")
+                                    f"{tasks_camera_id}")
                         bboxes = []
 
                         for frame in frames:
