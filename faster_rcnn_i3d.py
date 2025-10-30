@@ -67,7 +67,7 @@ def precompute_bboxes(pickle_dir, output_dir):
                         
                         # Check if this camera is the ipsilateral camera for the patient
                         #ipsilateral_camera = patient_to_ipsilateral.get(patient_id) #uncomment for ipsilateral
-                        ipsilateral_camera='cam3'
+                        ipsilateral_camera='cam3' #uncommment for top
                         if ipsilateral_camera == segment_camera_id:
                             frames = segment['frames']
                             video_id = (f"patient_{patient_id}_task_{segment['activity_id']}_"
