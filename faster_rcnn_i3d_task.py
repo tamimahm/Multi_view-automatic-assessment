@@ -7,7 +7,7 @@ from PIL import Image
 import cv2
 import pandas as pd
 import torchvision.models.detection as detection
-
+camera_box='ipsi'
 # Path to the CSV file with camera assignments
 ipsi_contra_csv = "D:\\nature_everything\\camera_assignments.csv"
 
@@ -55,17 +55,22 @@ def precompute_bboxes(pickle_dir, output_dir):
         with open(pkl_file, 'rb') as f:
             data = pickle.load(f)
             for camera_id in data:
-                # Skip cam3 as per requirement
-                if camera_id != 'cam3':
-                    continue
+                # Skip cam3 as per requirement 
+                if camera_box=='top':
+                    if camera_id != 'cam3':
+                        continue
+                else:
+                    if camera_id == 'cam3':
+                        continue
                 for tasks in data[camera_id]:
                     # Extract patient_id and camera_id from tasks
                     patient_id = tasks['patient_id']
                     tasks_camera_id = tasks['CameraId']
-                    
                     # Check if this camera is the ipsilateral camera for the patient
-                    #ipsilateral_camera = patient_to_ipsilateral.get(patient_id) #uncomment for ipsilateral
-                    ipsilateral_camera='cam3' #uncommment for top
+                    if camera_box=='ipsi':
+                        ipsilateral_camera = patient_to_ipsilateral.get(patient_id) #uncomment for ipsilateral
+                    else:  
+                        ipsilateral_camera='cam3' #uncommment for top
                     if ipsilateral_camera == tasks_camera_id:
                         frames = tasks['frames']
                         video_id = (f"patient_{patient_id}_task_{tasks['activity_id']}_"
@@ -83,7 +88,8 @@ def precompute_bboxes(pickle_dir, output_dir):
                         print(f"Saved bounding boxes for {video_id} to {bbox_file}")
 
 if __name__ == '__main__':
+    
     precompute_bboxes(
         pickle_dir='D:/nature_everything/nature_dataset/task_dataset',
-        output_dir='D:/nature_everything/frcnn_boxes_task/bboxes_top'
+        output_dir='D:/nature_everything/frcnn_boxes_task/bboxes_'+camera_box
     )
