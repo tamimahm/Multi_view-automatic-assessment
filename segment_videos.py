@@ -315,10 +315,11 @@ def process_videos_updated(video_dir, csv_dir, vid, num_frames=10, target_size=(
         camera_id = 'cam' + str(rec["CameraId"])
         mapping_id = rec["PatientTaskHandmappingId"]
         patient_id = rec["patient_id"]
-        if patient_id< (vid+1)*10 and patient_id>= (vid)*10:
+        if patient_id< (vid+1)*10 and patient_id>= (vid)*10 :
             activity_id = rec["activity_id"]
             file_name = rec["FileName"]
             segments = rec["segments"]
+            print(rec["FileName"])
             # Attach ratings (list may have 1 or 2 ratings)
             rec["task_ratings"] = task_ratings_dict.get(mapping_id, [])
             rec["segment_ratings"] = segment_ratings_dict.get(mapping_id, [])
@@ -408,11 +409,14 @@ def process_videos_updated(video_dir, csv_dir, vid, num_frames=10, target_size=(
                 start_time, end_time = seg
                 # If the segment is incomplete (start and end are the same), skip extraction without error logging.
                 if start_time == end_time:
+                    start_time=segments[seg_index-1][0]
+                    seg=(start_time,end_time)
+                    segments[seg_index]=seg
                     incomplete_segment+=1
-                    continue
                 frames = extract_frames_from_segment(video_path, start_time, end_time, num_frames, target_size)
                 if not frames:
                     save_seg_video.append(video_path)
+                    print(f"Could not extract frames for segment {seg_index} in video {video_path}.")
                     no_frame+=1
                     continue
                 # Retrieve description based on activity_id and seg_index
@@ -421,6 +425,7 @@ def process_videos_updated(video_dir, csv_dir, vid, num_frames=10, target_size=(
                 if bool(rec.get('segments')) and not bool(rec.get('segment_ratings')): 
                     no_segment_ratin+=1
                     no_segment_file.append(rec)
+                    print('no segment rating for', rec['FileName'])
                     continue
 
                 else:
@@ -446,7 +451,7 @@ if __name__ == "__main__":
     # Directories (adjust as necessary)
     video_dir = r"D:\all_ARAT_videos"
     csv_dir = r"D:\nature_everything"
-    for vid in range (11): 
+    for vid in range (1,11): 
         print(vid)   
         # Process videos based on the updated CSVs, segmentation info, and ratings.
         datasets, save_seg_video, no_rating_files,zero_rating_vid = process_videos_updated(video_dir, csv_dir,vid,num_frames=20, target_size=(256,256))
