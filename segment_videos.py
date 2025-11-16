@@ -320,7 +320,7 @@ def process_videos_updated(video_dir, csv_dir, vid, num_frames=10, target_size=(
             file_name = rec["FileName"]
             segments = rec["segments"]
             print(rec["FileName"])
-            # Attach ratings (list may have 1 or 2 ratings)
+            # Attach ratings (list may have 1 or 2 ratings)-
             rec["task_ratings"] = task_ratings_dict.get(mapping_id, [])
             rec["segment_ratings"] = segment_ratings_dict.get(mapping_id, [])
             # Skip if camera_id is not in our valid set (e.g., ignore cam2)
@@ -409,7 +409,10 @@ def process_videos_updated(video_dir, csv_dir, vid, num_frames=10, target_size=(
                 start_time, end_time = seg
                 # If the segment is incomplete (start and end are the same), skip extraction without error logging.
                 if start_time == end_time:
-                    start_time=segments[seg_index-1][0]
+                    if seg_index==0:
+                        start_time=0
+                    else:
+                        start_time=segments[seg_index-1][0]
                     seg=(start_time,end_time)
                     segments[seg_index]=seg
                     incomplete_segment+=1
